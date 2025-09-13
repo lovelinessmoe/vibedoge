@@ -124,8 +124,10 @@ export const useUIStore = create<UIState>((set) => ({
   setTheme: (theme) => set({ theme }),
 }));
 
-// 留言板状态
-interface Message {
+// 留言板状态 - 使用社区API
+import { communityService } from '../services/communityService';
+
+interface MessageBoardMessage {
   id: string;
   userId: string;
   username: string;
@@ -137,12 +139,12 @@ interface Message {
 }
 
 interface MessageBoardState {
-  messages: Message[];
+  messages: MessageBoardMessage[];
   isLoading: boolean;
   newMessageCount: number;
-  addMessage: (content: string, user: User) => void;
-  likeMessage: (messageId: string) => void;
-  loadMessages: () => void;
+  addMessage: (content: string, user: User) => Promise<void>;
+  likeMessage: (messageId: string, user: User) => Promise<void>;
+  loadMessages: () => Promise<void>;
   clearNewMessageCount: () => void;
 }
 
@@ -151,78 +153,76 @@ export const useMessageBoardStore = create<MessageBoardState>((set) => ({
   isLoading: false,
   newMessageCount: 0,
   
-  addMessage: (content: string, user: User) => {
-    const newMessage: Message = {
-      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      userId: user.id,
-      username: user.username,
-      avatar: user.avatar,
-      content,
-      timestamp: new Date().toISOString(),
-      likes: 0,
-      isLiked: false
-    };
-    
-    set((state) => ({
-      messages: [newMessage, ...state.messages].slice(0, 100), // 保持最新100条消息
-      newMessageCount: state.newMessageCount + 1
-    }));
+  addMessage: async (content: string, user: User) => {
+    try {
+      const response = await communityService.postMessage(user.username, content);
+      if (response.success && response.data) {
+        const newMessage: MessageBoardMessage = {
+          id: response.data.id,
+          userId: user.id,
+          username: response.data.username,
+          avatar: user.avatar,
+          content: response.data.content,
+          timestamp: response.data.timestamp.toISOString(),
+          likes: response.data.likes,
+          isLiked: false
+        };
+        
+        set((state) => ({
+          messages: [newMessage, ...state.messages].slice(0, 100),
+          newMessageCount: state.newMessageCount + 1
+        }));
+      }
+    } catch (error) {
+      console.error('发送留言失败:', error);
+    }
   },
   
-  likeMessage: (messageId: string) => {
-    set((state) => ({
-      messages: state.messages.map(msg => 
-        msg.id === messageId 
-          ? { 
-              ...msg, 
-              likes: msg.isLiked ? msg.likes - 1 : msg.likes + 1,
-              isLiked: !msg.isLiked 
-            }
-          : msg
-      )
-    }));
+  likeMessage: async (messageId: string, user: User) => {
+    try {
+      const response = await communityService.likeMessage(messageId, user.username);
+      if (response.success && response.data) {
+        set((state) => ({
+          messages: state.messages.map(msg => 
+            msg.id === messageId 
+              ? { 
+                  ...msg, 
+                  likes: response.data!.likes,
+                  isLiked: response.data!.hasLiked
+                }
+              : msg
+          )
+        }));
+      }
+    } catch (error) {
+      console.error('点赞失败:', error);
+    }
   },
   
-  loadMessages: () => {
+  loadMessages: async () => {
     set({ isLoading: true });
-    
-    // 模拟加载初始消息
-    setTimeout(() => {
-      const mockMessages: Message[] = [
-        {
-          id: 'msg_1',
-          userId: 'user_1',
-          username: 'CryptoTrader',
-          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=trader1',
-          content: '欢迎来到Vibe交易所！这里有最新的加密货币交易机会！',
-          timestamp: new Date(Date.now() - 300000).toISOString(),
-          likes: 12,
-          isLiked: false
-        },
-        {
-          id: 'msg_2',
-          userId: 'user_2',
-          username: 'BlockchainFan',
-          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=fan1',
-          content: '今天的抽奖活动太棒了！已经参与了，期待中奖！',
-          timestamp: new Date(Date.now() - 600000).toISOString(),
-          likes: 8,
-          isLiked: false
-        },
-        {
-          id: 'msg_3',
-          userId: 'user_3',
-          username: 'DeFiExplorer',
-          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=explorer1',
-          content: '这个平台的用户体验真的很棒，界面设计很现代化！',
-          timestamp: new Date(Date.now() - 900000).toISOString(),
-          likes: 15,
-          isLiked: false
-        }
-      ];
-      
-      set({ messages: mockMessages, isLoading: false });
-    }, 1000);
+    try {
+      const response = await communityService.getMessages(1, 20);
+      if (response.success && response.data) {
+        const messages: MessageBoardMessage[] = response.data.messages.map(msg => ({
+          id: msg.id,
+          userId: msg.id, // 使用消息ID作为用户ID的占位符
+          username: msg.username,
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.username}`,
+          content: msg.content,
+          timestamp: msg.timestamp.toISOString(),
+          likes: msg.likes,
+          isLiked: false // 默认未点赞，实际应该检查用户是否已点赞
+        }));
+        
+        set({ messages, isLoading: false });
+      } else {
+        set({ isLoading: false });
+      }
+    } catch (error) {
+      console.error('加载留言失败:', error);
+      set({ isLoading: false });
+    }
   },
   
   clearNewMessageCount: () => set({ newMessageCount: 0 })
