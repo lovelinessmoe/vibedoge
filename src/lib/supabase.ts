@@ -54,6 +54,7 @@ export interface Database {
           participants: number
           last_activity: string
           trending: boolean
+          created_by: string
           created_at: string
           updated_at: string
         }
@@ -65,6 +66,7 @@ export interface Database {
           participants?: number
           last_activity?: string
           trending?: boolean
+          created_by: string
           created_at?: string
           updated_at?: string
         }
@@ -76,8 +78,61 @@ export interface Database {
           participants?: number
           last_activity?: string
           trending?: boolean
+          created_by?: string
           created_at?: string
           updated_at?: string
+        }
+      }
+      topic_messages: {
+        Row: {
+          id: string
+          topic_id: string
+          username: string
+          content: string
+          timestamp: string
+          likes: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          topic_id: string
+          username: string
+          content: string
+          timestamp?: string
+          likes?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          topic_id?: string
+          username?: string
+          content?: string
+          timestamp?: string
+          likes?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      topic_message_likes: {
+        Row: {
+          id: string
+          topic_message_id: string
+          username: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          topic_message_id: string
+          username: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          topic_message_id?: string
+          username?: string
+          created_at?: string
         }
       }
       message_likes: {

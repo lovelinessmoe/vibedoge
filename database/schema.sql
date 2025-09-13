@@ -22,8 +22,30 @@ CREATE TABLE IF NOT EXISTS topics (
     participants INTEGER DEFAULT 0,
     last_activity TIMESTAMPTZ DEFAULT NOW(),
     trending BOOLEAN DEFAULT FALSE,
+    created_by VARCHAR(100) NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 4. 话题留言表
+CREATE TABLE IF NOT EXISTS topic_messages (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    topic_id UUID REFERENCES topics(id) ON DELETE CASCADE,
+    username VARCHAR(100) NOT NULL,
+    content TEXT NOT NULL,
+    timestamp TIMESTAMPTZ DEFAULT NOW(),
+    likes INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 5. 话题留言点赞表
+CREATE TABLE IF NOT EXISTS topic_message_likes (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    topic_message_id UUID REFERENCES topic_messages(id) ON DELETE CASCADE,
+    username VARCHAR(100) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(topic_message_id, username)
 );
 
 -- 3. 留言点赞表
@@ -39,7 +61,11 @@ CREATE TABLE IF NOT EXISTS message_likes (
 CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_username ON messages(username);
 CREATE INDEX IF NOT EXISTS idx_topics_trending ON topics(trending, last_activity DESC);
+CREATE INDEX IF NOT EXISTS idx_topics_created_by ON topics(created_by);
 CREATE INDEX IF NOT EXISTS idx_message_likes_message_id ON message_likes(message_id);
+CREATE INDEX IF NOT EXISTS idx_topic_messages_topic_id ON topic_messages(topic_id, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_topic_messages_username ON topic_messages(username);
+CREATE INDEX IF NOT EXISTS idx_topic_message_likes_message_id ON topic_message_likes(topic_message_id);
 
 -- 创建更新时间触发器函数
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -57,15 +83,18 @@ CREATE TRIGGER update_messages_updated_at BEFORE UPDATE ON messages
 CREATE TRIGGER update_topics_updated_at BEFORE UPDATE ON topics
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_topic_messages_updated_at BEFORE UPDATE ON topic_messages
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- 插入一些初始数据
 
 -- 插入话题数据
-INSERT INTO topics (title, description, messages, participants, trending) VALUES
-('Vibe Coding 技术讨论', '分享 Vibe Coding 相关的技术心得和经验', 45, 23, true),
-('社区建设与反馈', '对平台功能的建议和反馈', 32, 18, true),
-('新手入门指南', '帮助新用户快速上手平台功能', 28, 15, false),
-('创意分享', '分享你的创意想法和灵感', 19, 12, false),
-('技术支持', '遇到问题？在这里寻求帮助', 15, 8, false);
+INSERT INTO topics (title, description, messages, participants, trending, created_by) VALUES
+('Vibe Coding 技术讨论', '分享 Vibe Coding 相关的技术心得和经验', 45, 23, true, '系统管理员'),
+('社区建设与反馈', '对平台功能的建议和反馈', 32, 18, true, '系统管理员'),
+('新手入门指南', '帮助新用户快速上手平台功能', 28, 15, false, '系统管理员'),
+('创意分享', '分享你的创意想法和灵感', 19, 12, false, '系统管理员'),
+('技术支持', '遇到问题？在这里寻求帮助', 15, 8, false, '系统管理员');
 
 -- 插入一些示例留言
 INSERT INTO messages (username, content) VALUES
@@ -82,8 +111,12 @@ INSERT INTO messages (username, content) VALUES
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE topics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE message_likes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE topic_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE topic_message_likes ENABLE ROW LEVEL SECURITY;
 
 -- 创建基本的安全策略（允许所有操作，你可以根据需要调整）
 CREATE POLICY "Allow all operations on messages" ON messages FOR ALL USING (true);
 CREATE POLICY "Allow all operations on topics" ON topics FOR ALL USING (true);
 CREATE POLICY "Allow all operations on message_likes" ON message_likes FOR ALL USING (true);
+CREATE POLICY "Allow all operations on topic_messages" ON topic_messages FOR ALL USING (true);
+CREATE POLICY "Allow all operations on topic_message_likes" ON topic_message_likes FOR ALL USING (true);

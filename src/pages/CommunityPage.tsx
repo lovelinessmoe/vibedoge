@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { MessageSquare, Users, Heart, Send, TrendingUp, Clock, Loader2, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MessageSquare, Users, Heart, Send, TrendingUp, Clock, Loader2, AlertCircle, Plus } from 'lucide-react';
 import { communityService, Message, Topic } from '../services/communityService';
+import TopicDetail from '../components/TopicDetail';
+import CreateTopicForm from '../components/CreateTopicForm';
 
 const CommunityPage: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([]);
@@ -11,6 +13,11 @@ const CommunityPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [currentUser] = useState('游客用户'); // 实际项目中应该从用户认证系统获取
+    
+    // 话题相关状态
+    const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+    const [showCreateTopic, setShowCreateTopic] = useState(false);
+    const [isCreatingTopic, setIsCreatingTopic] = useState(false);
 
     // 加载留言数据
     const loadMessages = async () => {
@@ -41,10 +48,42 @@ const CommunityPage: React.FC = () => {
             const response = await communityService.getTopics();
             if (response.success && response.data) {
                 setTopics(response.data);
+            } else {
+                setError(response.error || '加载话题失败');
             }
         } catch (err) {
             console.error('加载话题失败:', err);
+            setError('网络连接失败');
         }
+    };
+
+    // 创建新话题
+    const handleCreateTopic = async (title: string, description: string) => {
+        setIsCreatingTopic(true);
+        try {
+            const response = await communityService.createTopic(title, description, currentUser);
+            if (response.success && response.data) {
+                setTopics([response.data, ...topics]);
+                setShowCreateTopic(false);
+            } else {
+                setError(response.error || '创建话题失败');
+            }
+        } catch (err) {
+            setError('创建失败，请检查网络连接');
+        } finally {
+            setIsCreatingTopic(false);
+        }
+    };
+
+    // 选择话题
+    const handleTopicClick = (topic: Topic) => {
+        setSelectedTopic(topic);
+    };
+
+    // 返回话题列表
+    const handleBackToTopics = () => {
+        setSelectedTopic(null);
+        loadTopics(); // 重新加载话题列表以更新数据
     };
 
     // 发送留言
@@ -264,48 +303,105 @@ const CommunityPage: React.FC = () => {
 
                 {/* Topics Tab */}
                 {activeTab === 'topics' && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5 }}
-                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                    >
-                        {topics.map((topic) => (
+                    <AnimatePresence mode="wait">
+                        {selectedTopic ? (
+                            <TopicDetail
+                                key="topic-detail"
+                                topic={selectedTopic}
+                                onBack={handleBackToTopics}
+                                currentUser={currentUser}
+                            />
+                        ) : (
                             <motion.div
-                                key={topic.id}
-                                whileHover={{ scale: 1.02 }}
-                                className="bg-white/75 backdrop-blur-md rounded-2xl p-6 hover:bg-white/85 transition-all duration-300 cursor-pointer border border-white/90"
+                                key="topics-list"
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                transition={{ duration: 0.5 }}
+                                className="space-y-6"
                             >
-                                <div className="flex items-start justify-between mb-4">
-                                    <h3 className="text-slate-800 font-bold text-lg">{topic.title}</h3>
-                                    {topic.trending && (
-                                        <div className="bg-orange-500/20 backdrop-blur-sm border border-orange-200/30 text-orange-600 px-2 py-1 rounded-full text-xs flex items-center gap-1">
-                                            <TrendingUp className="w-3 h-3" />
-                                            热门
+                                {/* 创建话题按钮 */}
+                                <div className="flex justify-end">
+                                    <button
+                                        onClick={() => setShowCreateTopic(true)}
+                                        className="bg-blue-600/90 backdrop-blur-sm border border-blue-700/90 hover:bg-blue-700/95 text-white px-6 py-3 rounded-xl transition-all duration-300 flex items-center gap-2 shadow-lg"
+                                    >
+                                        <Plus className="w-5 h-5" />
+                                        创建话题
+                                    </button>
+                                </div>
+
+                                {/* 话题列表 */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {topics.length === 0 ? (
+                                        <div className="col-span-full text-center py-12 text-slate-500">
+                                            暂无话题，快来创建第一个话题吧！
                                         </div>
+                                    ) : (
+                                        topics.map((topic) => (
+                                            <motion.div
+                                                key={topic.id}
+                                                whileHover={{ scale: 1.02 }}
+                                                onClick={() => handleTopicClick(topic)}
+                                                className="bg-white/75 backdrop-blur-md rounded-2xl p-6 hover:bg-white/85 transition-all duration-300 cursor-pointer border border-white/90"
+                                            >
+                                                <div className="flex items-start justify-between mb-4">
+                                                    <h3 className="text-slate-800 font-bold text-lg">{topic.title}</h3>
+                                                    {topic.trending && (
+                                                        <div className="bg-orange-500/20 backdrop-blur-sm border border-orange-200/30 text-orange-600 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                                                            <TrendingUp className="w-3 h-3" />
+                                                            热门
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <p className="text-slate-600 mb-4 line-clamp-2">{topic.description}</p>
+                                                <div className="flex items-center justify-between text-sm text-slate-500">
+                                                    <div className="flex items-center gap-4">
+                                                        <span className="flex items-center gap-1">
+                                                            <MessageSquare className="w-4 h-4" />
+                                                            {topic.messages}
+                                                        </span>
+                                                        <span className="flex items-center gap-1">
+                                                            <Users className="w-4 h-4" />
+                                                            {topic.participants}
+                                                        </span>
+                                                    </div>
+                                                    <span className="flex items-center gap-1">
+                                                        <Clock className="w-4 h-4" />
+                                                        {formatTime(topic.lastActivity)}
+                                                    </span>
+                                                </div>
+                                                <div className="mt-3 text-xs text-slate-400">
+                                                    创建者: {topic.createdBy}
+                                                </div>
+                                            </motion.div>
+                                        ))
                                     )}
                                 </div>
-                                <p className="text-slate-600 mb-4">{topic.description}</p>
-                                <div className="flex items-center justify-between text-sm text-slate-500">
-                                    <div className="flex items-center gap-4">
-                                        <span className="flex items-center gap-1">
-                                            <MessageSquare className="w-4 h-4" />
-                                            {topic.messages}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <Users className="w-4 h-4" />
-                                            {topic.participants}
-                                        </span>
-                                    </div>
-                                    <span className="flex items-center gap-1">
-                                        <Clock className="w-4 h-4" />
-                                        {formatTime(topic.lastActivity)}
-                                    </span>
-                                </div>
                             </motion.div>
-                        ))}
-                    </motion.div>
+                        )}
+                    </AnimatePresence>
                 )}
+
+                {/* 创建话题表单弹窗 */}
+                <AnimatePresence>
+                    {showCreateTopic && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                        >
+                            <div className="max-w-2xl w-full">
+                                <CreateTopicForm
+                                    onSubmit={handleCreateTopic}
+                                    onCancel={() => setShowCreateTopic(false)}
+                                    isSubmitting={isCreatingTopic}
+                                />
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );
