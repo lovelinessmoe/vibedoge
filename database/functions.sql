@@ -1,5 +1,5 @@
--- 数据库函数：优化话题统计查询
--- 在 Supabase SQL Editor 中执行
+-- 数据库函数：话题统计自动更新（可选）
+-- 在 Supabase SQL Editor 中执行（可选，不是必需的）
 
 -- 1. 创建函数：更新话题统计数据
 CREATE OR REPLACE FUNCTION update_topic_stats(topic_uuid UUID)
@@ -28,7 +28,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 2. 创建触发器：自动更新统计数据
+-- 2. 创建触发器：自动更新统计数据（可选）
 CREATE OR REPLACE FUNCTION trigger_update_topic_stats()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -44,37 +44,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 3. 绑定触发器到话题留言表
-DROP TRIGGER IF EXISTS topic_messages_stats_trigger ON topic_messages;
-CREATE TRIGGER topic_messages_stats_trigger
-    AFTER INSERT OR UPDATE OR DELETE ON topic_messages
-    FOR EACH ROW EXECUTE FUNCTION trigger_update_topic_stats();
-
--- 4. 创建视图：带统计数据的话题列表
-CREATE OR REPLACE VIEW topics_with_stats AS
-SELECT 
-    t.*,
-    COALESCE(tm.message_count, 0) as real_messages,
-    COALESCE(tm.participant_count, 0) as real_participants
-FROM topics t
-LEFT JOIN (
-    SELECT 
-        topic_id,
-        COUNT(*) as message_count,
-        COUNT(DISTINCT username) as participant_count
-    FROM topic_messages
-    GROUP BY topic_id
-) tm ON t.id = tm.topic_id;
-
--- 5. 初始化所有现有话题的统计数据
-DO $$
-DECLARE
-    topic_record RECORD;
-BEGIN
-    FOR topic_record IN SELECT id FROM topics LOOP
-        PERFORM update_topic_stats(topic_record.id);
-    END LOOP;
-END $$;
+-- 3. 绑定触发器到话题留言表（可选）
+-- 注意：这个触发器是可选的，如果不需要自动更新可以跳过
+-- DROP TRIGGER IF EXISTS topic_messages_stats_trigger ON topic_messages;
+-- CREATE TRIGGER topic_messages_stats_trigger
+--     AFTER INSERT OR UPDATE OR DELETE ON topic_messages
+--     FOR EACH ROW EXECUTE FUNCTION trigger_update_topic_stats();
 
 -- 完成提示
-SELECT 'Topic statistics functions created successfully!' as status;
+SELECT 'Topic statistics functions created successfully (optional)!' as status;

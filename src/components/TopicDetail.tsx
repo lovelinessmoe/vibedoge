@@ -90,6 +90,42 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, onBack, currentUser })
 
     useEffect(() => {
         loadTopicMessages();
+
+        // 设置话题留言的实时订阅
+        const subscription = communityService.subscribeToTopicMessages(topic.id, (payload) => {
+            console.log('话题留言实时更新:', payload);
+            
+            if (payload.eventType === 'INSERT') {
+                // 新留言插入
+                const newMessage = {
+                    id: payload.new.id,
+                    topicId: payload.new.topic_id,
+                    username: payload.new.username,
+                    content: payload.new.content,
+                    timestamp: new Date(payload.new.timestamp),
+                    likes: payload.new.likes
+                };
+                setMessages(prev => [newMessage, ...prev]);
+            } else if (payload.eventType === 'UPDATE') {
+                // 留言更新（如点赞）
+                setMessages(prev => prev.map(msg => 
+                    msg.id === payload.new.id 
+                        ? {
+                            ...msg,
+                            likes: payload.new.likes
+                        }
+                        : msg
+                ));
+            } else if (payload.eventType === 'DELETE') {
+                // 留言删除
+                setMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
+            }
+        });
+
+        // 清理订阅
+        return () => {
+            communityService.unsubscribe(subscription);
+        };
     }, [topic.id]);
 
     return (

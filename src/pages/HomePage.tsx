@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   ArrowRight, 
@@ -19,57 +19,170 @@ import { useUIStore } from '../store/uiStore';
 import AnimatedText from '../components/ui/AnimatedText';
 import Button from '../components/ui/Button';
 import { Link } from 'react-router-dom';
+import { communityService, Message, Topic } from '../services/communityService';
+import RealtimeIndicator from '../components/RealtimeIndicator';
 
 const HomePage: React.FC = () => {
   const { } = useUIStore();
+  
+  // 真实数据状态
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // 实时更新状态
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date | undefined>();
 
-  // 模拟留言板数据
-  const messageBoardData = {
-    messages: [
-      {
-        id: 1,
-        username: "CryptoKing",
-        content: "今天的市场走势很不错，大家觉得接下来会怎么样？",
-        timestamp: "2分钟前",
-        likes: 12,
-        isVip: true
-      },
-      {
-        id: 2,
-        username: "TechGuru",
-        content: "刚刚参与了抽奖活动，界面设计真的很棒！",
-        timestamp: "5分钟前",
-        likes: 8,
-        isVip: false
-      },
-      {
-        id: 3,
-        username: "BlockchainFan",
-        content: "期待更多的功能上线，Vibe团队加油！💪",
-        timestamp: "10分钟前",
-        likes: 15,
-        isVip: true
+  // 模拟在线用户数据（这部分可以保持静态）
+  const onlineUsers = [
+    "Alice", "Bob", "Charlie", "David", "Eva", "Frank", "Grace", "Henry",
+    "Ivy", "Jack", "Kate", "Liam", "Mia", "Noah", "Olivia", "Paul",
+    "Quinn", "Ruby", "Sam", "Tina", "Uma", "Victor", "Wendy", "Xander"
+  ];
+
+  // 加载真实数据和设置实时更新
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        
+        // 并行加载留言和话题数据
+        const [messagesResponse, topicsResponse] = await Promise.all([
+          communityService.getMessages(1, 8), // 获取最新8条留言
+          communityService.getTopics(true) // 获取热门话题
+        ]);
+
+        if (messagesResponse.success && messagesResponse.data) {
+          setMessages(messagesResponse.data.messages);
+        }
+
+        if (topicsResponse.success && topicsResponse.data) {
+          setTopics(topicsResponse.data.slice(0, 5)); // 只显示前5个话题
+        }
+      } catch (error) {
+        console.error('加载首页数据失败:', error);
+      } finally {
+        setLoading(false);
       }
-    ],
-    onlineUsers: [
-      "Alice", "Bob", "Charlie", "David", "Eva", "Frank", "Grace", "Henry",
-      "Ivy", "Jack", "Kate", "Liam", "Mia", "Noah", "Olivia", "Paul",
-      "Quinn", "Ruby", "Sam", "Tina", "Uma", "Victor", "Wendy", "Xander"
-    ],
-    hotTopics: [
-      { name: "DeFi趋势", count: 234 },
-      { name: "NFT市场", count: 189 },
-      { name: "Web3发展", count: 156 },
-      { name: "加密货币", count: 142 },
-      { name: "区块链技术", count: 98 }
-    ],
-    todayMessages: 1247,
-    activeUsers: 892,
-    newUsers: 156
+    };
+
+    loadData();
+
+    // 设置实时订阅
+    console.log('首页：设置实时订阅...');
+    
+    const messagesSubscription = communityService.subscribeToMessages((payload) => {
+      console.log('🔥 首页留言实时更新:', payload);
+      setLastUpdate(new Date());
+      
+      if (payload.eventType === 'INSERT') {
+        console.log('📝 新留言插入:', payload.new);
+        // 新留言插入，添加到列表开头，保持最多8条
+        const newMessage = {
+          id: payload.new.id,
+          username: payload.new.username,
+          content: payload.new.content,
+          timestamp: new Date(payload.new.timestamp),
+          likes: payload.new.likes,
+          replies: payload.new.replies
+        };
+        setMessages(prev => {
+          const updated = [newMessage, ...prev].slice(0, 8);
+          console.log('📝 首页留言列表更新:', updated.length, '条留言');
+          return updated;
+        });
+      } else if (payload.eventType === 'UPDATE') {
+        console.log('🔄 留言更新:', payload.new);
+        // 留言更新（如点赞）
+        setMessages(prev => prev.map(msg => 
+          msg.id === payload.new.id 
+            ? {
+                ...msg,
+                likes: payload.new.likes,
+                replies: payload.new.replies
+              }
+            : msg
+        ));
+      }
+    });
+
+    const topicsSubscription = communityService.subscribeToTopics((payload) => {
+      console.log('🔥 首页话题实时更新:', payload);
+      setLastUpdate(new Date());
+      
+      if (payload.eventType === 'INSERT') {
+        console.log('📋 新话题插入:', payload.new);
+        // 新话题插入
+        const newTopic = {
+          id: payload.new.id,
+          title: payload.new.title,
+          description: payload.new.description,
+          messages: payload.new.messages || 0,
+          participants: payload.new.participants || 0,
+          lastActivity: new Date(payload.new.last_activity),
+          trending: payload.new.trending,
+          createdBy: payload.new.created_by
+        };
+        setTopics(prev => {
+          const updated = [newTopic, ...prev].slice(0, 5);
+          console.log('📋 首页话题列表更新:', updated.length, '个话题');
+          return updated;
+        });
+      } else if (payload.eventType === 'UPDATE') {
+        console.log('🔄 话题更新:', payload.new);
+        // 话题更新
+        setTopics(prev => prev.map(topic => 
+          topic.id === payload.new.id 
+            ? {
+                ...topic,
+                messages: payload.new.messages || 0,
+                participants: payload.new.participants || 0,
+                lastActivity: new Date(payload.new.last_activity),
+                trending: payload.new.trending
+              }
+            : topic
+        ));
+      }
+    });
+
+    // 监听连接状态
+    setIsRealtimeConnected(true);
+    console.log('✅ 首页实时订阅已设置');
+
+    // 清理订阅
+    return () => {
+      console.log('🧹 首页清理实时订阅');
+      setIsRealtimeConnected(false);
+      communityService.unsubscribe(messagesSubscription);
+      communityService.unsubscribe(topicsSubscription);
+    };
+  }, []);
+
+  // 格式化时间
+  const formatTime = (date: Date) => {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / (1000 * 60));
+    
+    if (minutes < 1) return '刚刚';
+    if (minutes < 60) return `${minutes}分钟前`;
+    if (minutes < 1440) return `${Math.floor(minutes / 60)}小时前`;
+    return `${Math.floor(minutes / 1440)}天前`;
   };
+
+  // 计算统计数据
+  const totalMessages = messages.reduce((sum, msg) => sum + 1, 0);
+  const totalLikes = messages.reduce((sum, msg) => sum + msg.likes, 0);
+  const uniqueUsers = new Set(messages.map(msg => msg.username)).size;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* 实时状态指示器 */}
+      <RealtimeIndicator 
+        isConnected={isRealtimeConnected} 
+        lastUpdate={lastUpdate} 
+      />
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         {/* 动态背景 */}
@@ -382,45 +495,62 @@ const HomePage: React.FC = () => {
                 
                 {/* 留言列表 */}
                 <div className="space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
-                  {messageBoardData.messages.slice(0, 8).map((message, index) => (
-                    <motion.div
-                      key={message.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="backdrop-blur-sm bg-white/75 border border-white/90 rounded-lg p-4 hover:bg-white/85 transition-colors"
-                    >
-                      <div className="flex items-start space-x-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center flex-shrink-0">
-                          <span className="text-white font-bold text-sm">
-                            {message.username.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className="text-gray-800 font-semibold text-sm">{message.username}</span>
-                            <span className="text-gray-600 text-xs">{message.timestamp}</span>
-                            {message.isVip && (
-                              <span className="bg-yellow-500 text-black text-xs px-2 py-0.5 rounded-full font-bold">
-                                VIP
-                              </span>
-                            )}
+                  {loading ? (
+                    // 加载状态
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                  ) : messages.length === 0 ? (
+                    // 空状态
+                    <div className="text-center py-8 text-gray-500">
+                      <MessageCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>暂无留言，快去社区发表第一条留言吧！</p>
+                      <Link to="/community" className="text-blue-600 hover:text-blue-700 text-sm mt-2 inline-block">
+                        前往社区 →
+                      </Link>
+                    </div>
+                  ) : (
+                    // 真实留言数据
+                    messages.map((message, index) => (
+                      <motion.div
+                        key={message.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="backdrop-blur-sm bg-white/75 border border-white/90 rounded-lg p-4 hover:bg-white/85 transition-colors"
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white font-bold text-sm">
+                              {message.username.charAt(0).toUpperCase()}
+                            </span>
                           </div>
-                          <p className="text-gray-700 text-sm leading-relaxed">{message.content}</p>
-                          <div className="flex items-center space-x-4 mt-2">
-                            <button className="flex items-center space-x-1 text-gray-600 hover:text-red-600 transition-colors">
-                              <Heart className="h-4 w-4" />
-                              <span className="text-xs">{message.likes}</span>
-                            </button>
-                            <button className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 transition-colors">
-                              <MessageCircle className="h-4 w-4" />
-                              <span className="text-xs">回复</span>
-                            </button>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <span className="text-gray-800 font-semibold text-sm">{message.username}</span>
+                              <span className="text-gray-600 text-xs">{formatTime(message.timestamp)}</span>
+                              {message.likes > 10 && (
+                                <span className="bg-yellow-500 text-black text-xs px-2 py-0.5 rounded-full font-bold">
+                                  热门
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-gray-700 text-sm leading-relaxed line-clamp-2">{message.content}</p>
+                            <div className="flex items-center space-x-4 mt-2">
+                              <div className="flex items-center space-x-1 text-gray-600">
+                                <Heart className="h-4 w-4" />
+                                <span className="text-xs">{message.likes}</span>
+                              </div>
+                              <div className="flex items-center space-x-1 text-gray-600">
+                                <MessageCircle className="h-4 w-4" />
+                                <span className="text-xs">{message.replies}</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    ))
+                  )}
                 </div>
                 
                 {/* 快速发言 */}
@@ -472,15 +602,36 @@ const HomePage: React.FC = () => {
               <div className="backdrop-blur-md bg-white/75 rounded-2xl p-6 border border-white/90">
                 <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
                   <Users className="h-5 w-5 mr-2 text-green-600" />
-                  🐕 Vibe 创作者 ({messageBoardData.onlineUsers.length})
+                  🐕 Vibe 创作者 ({uniqueUsers + onlineUsers.length})
                 </h3>
                 <div className="grid grid-cols-6 gap-2">
-                  {messageBoardData.onlineUsers.slice(0, 18).map((user, index) => (
+                  {/* 显示真实用户 */}
+                  {messages.slice(0, 6).map((message, index) => (
                     <motion.div
-                      key={index}
+                      key={`real-${message.id}`}
                       initial={{ opacity: 0, scale: 0 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: index * 0.05 }}
+                      className="relative group"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform">
+                        <span className="text-white font-bold text-xs">
+                          {message.username.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="absolute bottom-0 right-0 w-2 h-2 bg-green-600 rounded-full border border-white"></div>
+                      <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 backdrop-blur-sm bg-white/80 text-gray-800 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                        {message.username}
+                      </div>
+                    </motion.div>
+                  ))}
+                  {/* 显示模拟用户 */}
+                  {onlineUsers.slice(0, 12).map((user, index) => (
+                    <motion.div
+                      key={`mock-${index}`}
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: (index + 6) * 0.05 }}
                       className="relative group"
                     >
                       <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform">
@@ -489,18 +640,15 @@ const HomePage: React.FC = () => {
                         </span>
                       </div>
                       <div className="absolute bottom-0 right-0 w-2 h-2 bg-green-600 rounded-full border border-white"></div>
-                      {/* 悬浮显示用户名 */}
                       <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 backdrop-blur-sm bg-white/80 text-gray-800 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
                         {user}
                       </div>
                     </motion.div>
                   ))}
                 </div>
-                {messageBoardData.onlineUsers.length > 18 && (
-                  <p className="text-gray-600 text-sm mt-3 text-center">
-                    还有 {messageBoardData.onlineUsers.length - 18} 位用户在线...
-                  </p>
-                )}
+                <p className="text-gray-600 text-sm mt-3 text-center">
+                  还有更多用户在线...
+                </p>
               </div>
               
               {/* 热门话题 */}
@@ -510,23 +658,42 @@ const HomePage: React.FC = () => {
                   🐾 Vibe 热点
                 </h3>
                 <div className="space-y-3">
-                  {messageBoardData.hotTopics.map((topic, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="flex items-center justify-between p-3 backdrop-blur-sm bg-white/50 border-2 border-white/70 rounded-lg hover:bg-white/60 hover:border-white/80 transition-all duration-300 cursor-pointer shadow-md hover:shadow-lg"
-                    >
-                      <div>
-                        <div className="text-gray-800 font-medium text-sm">#{topic.name}</div>
-                        <div className="text-gray-600 text-xs">{topic.count} 条讨论</div>
-                      </div>
-                      <div className="text-orange-600 text-xs font-bold">
-                        #{index + 1}
-                      </div>
-                    </motion.div>
-                  ))}
+                  {loading ? (
+                    <div className="flex justify-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600"></div>
+                    </div>
+                  ) : topics.length === 0 ? (
+                    <div className="text-center py-4 text-gray-500">
+                      <Hash className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">暂无热门话题</p>
+                      <Link to="/community" className="text-orange-600 hover:text-orange-700 text-xs mt-1 inline-block">
+                        创建话题 →
+                      </Link>
+                    </div>
+                  ) : (
+                    topics.map((topic, index) => (
+                      <motion.div
+                        key={topic.id}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="flex items-center justify-between p-3 backdrop-blur-sm bg-white/50 border-2 border-white/70 rounded-lg hover:bg-white/60 hover:border-white/80 transition-all duration-300 cursor-pointer shadow-md hover:shadow-lg"
+                      >
+                        <div>
+                          <div className="text-gray-800 font-medium text-sm">#{topic.title}</div>
+                          <div className="text-gray-600 text-xs">{topic.messages} 条讨论 · {topic.participants} 位参与者</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {topic.trending && (
+                            <span className="bg-orange-500 text-white text-xs px-1 py-0.5 rounded">热</span>
+                          )}
+                          <div className="text-orange-600 text-xs font-bold">
+                            #{index + 1}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))
+                  )}
                 </div>
               </div>
               
@@ -538,16 +705,20 @@ const HomePage: React.FC = () => {
                 </h3>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-600 text-sm">今日创意</span>
-                    <span className="text-gray-800 font-bold">{messageBoardData.todayMessages}</span>
+                    <span className="text-gray-600 text-sm">最新留言</span>
+                    <span className="text-gray-800 font-bold">{totalMessages}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-600 text-sm">活跃创作者</span>
-                    <span className="text-gray-800 font-bold">{messageBoardData.activeUsers}</span>
+                    <span className="text-gray-600 text-sm">活跃话题</span>
+                    <span className="text-gray-800 font-bold">{topics.length}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-600 text-sm">新创作者</span>
-                    <span className="text-gray-800 font-bold">+{messageBoardData.newUsers}</span>
+                    <span className="text-gray-600 text-sm">总点赞数</span>
+                    <span className="text-gray-800 font-bold">{totalLikes}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 text-sm">参与用户</span>
+                    <span className="text-gray-800 font-bold">{uniqueUsers}</span>
                   </div>
                 </div>
               </div>

@@ -50,6 +50,83 @@ export interface MessagesResponse {
 }
 
 class CommunityService {
+    // 订阅留言变化
+    subscribeToMessages(callback: (payload: any) => void) {
+        console.log('🔗 设置留言实时订阅...');
+        const channel = supabase
+            .channel('messages_changes')
+            .on('postgres_changes', 
+                { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'messages' 
+                }, 
+                (payload) => {
+                    console.log('📨 收到留言变化事件:', payload);
+                    callback(payload);
+                }
+            )
+            .subscribe((status) => {
+                console.log('📡 留言订阅状态:', status);
+            });
+        
+        return channel;
+    }
+
+    // 订阅话题变化
+    subscribeToTopics(callback: (payload: any) => void) {
+        console.log('🔗 设置话题实时订阅...');
+        const channel = supabase
+            .channel('topics_changes')
+            .on('postgres_changes', 
+                { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'topics' 
+                }, 
+                (payload) => {
+                    console.log('📨 收到话题变化事件:', payload);
+                    callback(payload);
+                }
+            )
+            .subscribe((status) => {
+                console.log('📡 话题订阅状态:', status);
+            });
+        
+        return channel;
+    }
+
+    // 订阅话题留言变化
+    subscribeToTopicMessages(topicId: string, callback: (payload: any) => void) {
+        console.log('🔗 设置话题留言实时订阅:', topicId);
+        const channel = supabase
+            .channel(`topic_messages_${topicId}`)
+            .on('postgres_changes', 
+                { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'topic_messages',
+                    filter: `topic_id=eq.${topicId}`
+                }, 
+                (payload) => {
+                    console.log('📨 收到话题留言变化事件:', payload);
+                    callback(payload);
+                }
+            )
+            .subscribe((status) => {
+                console.log('📡 话题留言订阅状态:', status);
+            });
+        
+        return channel;
+    }
+
+    // 取消订阅
+    unsubscribe(subscription: any) {
+        if (subscription) {
+            supabase.removeChannel(subscription);
+        }
+    }
+
     // 获取留言列表
     async getMessages(page: number = 1, limit: number = 10): Promise<ApiResponse<MessagesResponse>> {
         try {
@@ -238,12 +315,11 @@ class CommunityService {
         }
     }
 
-    // 获取话题列表（使用视图获取实时统计数据）
+    // 获取话题列表（直接查询并计算统计数据）
     async getTopics(trending?: boolean): Promise<ApiResponse<Topic[]>> {
         try {
-            // 使用视图获取带统计数据的话题
             let query = supabase
-                .from('topics_with_stats')
+                .from('topics')
                 .select('*');
 
             if (trending) {
@@ -256,56 +332,61 @@ class CommunityService {
 
             if (error) {
                 console.error('获取话题失败:', error);
-                // 如果视图不存在，回退到普通查询
-                const fallbackQuery = supabase
-                    .from('topics')
-                    .select('*')
-                    .order('last_activity', { ascending: false });
-
-                if (trending) {
-                    fallbackQuery.eq('trending', true);
-                }
-
-                const { data: fallbackTopics, error: fallbackError } = await fallbackQuery;
-                
-                if (fallbackError) {
-                    return {
-                        success: false,
-                        error: fallbackError.message
-                    };
-                }
-
-                const transformedTopics: Topic[] = fallbackTopics?.map(topic => ({
-                    id: topic.id,
-                    title: topic.title,
-                    description: topic.description,
-                    messages: topic.messages || 0,
-                    participants: topic.participants || 0,
-                    lastActivity: new Date(topic.last_activity),
-                    trending: topic.trending,
-                    createdBy: topic.created_by
-                })) || [];
-
                 return {
-                    success: true,
-                    data: transformedTopics
+                    success: false,
+                    error: error.message
                 };
             }
 
-            const transformedTopics: Topic[] = topics?.map(topic => ({
-                id: topic.id,
-                title: topic.title,
-                description: topic.description,
-                messages: topic.real_messages || topic.messages || 0,
-                participants: topic.real_participants || topic.participants || 0,
-                lastActivity: new Date(topic.last_activity),
-                trending: topic.trending,
-                createdBy: topic.created_by
-            })) || [];
+            // 为每个话题计算真实的统计数据
+            const topicsWithStats = await Promise.all(
+                (topics || []).map(async (topic) => {
+                    try {
+                        // 获取真实的留言数
+                        const { count: messageCount } = await supabase
+                            .from('topic_messages')
+                            .select('*', { count: 'exact', head: true })
+                            .eq('topic_id', topic.id);
+
+                        // 获取真实的参与者数（去重用户名）
+                        const { data: participants } = await supabase
+                            .from('topic_messages')
+                            .select('username')
+                            .eq('topic_id', topic.id);
+
+                        const uniqueParticipants = new Set(participants?.map(p => p.username) || []);
+                        const participantCount = uniqueParticipants.size;
+
+                        return {
+                            id: topic.id,
+                            title: topic.title,
+                            description: topic.description,
+                            messages: messageCount || 0,
+                            participants: participantCount,
+                            lastActivity: new Date(topic.last_activity),
+                            trending: topic.trending,
+                            createdBy: topic.created_by
+                        };
+                    } catch (err) {
+                        console.error(`计算话题 ${topic.id} 统计数据失败:`, err);
+                        // 如果计算失败，使用数据库中的值
+                        return {
+                            id: topic.id,
+                            title: topic.title,
+                            description: topic.description,
+                            messages: topic.messages || 0,
+                            participants: topic.participants || 0,
+                            lastActivity: new Date(topic.last_activity),
+                            trending: topic.trending,
+                            createdBy: topic.created_by
+                        };
+                    }
+                })
+            );
 
             return {
                 success: true,
-                data: transformedTopics
+                data: topicsWithStats
             };
         } catch (error) {
             console.error('获取话题失败:', error);
@@ -319,30 +400,6 @@ class CommunityService {
     // 获取话题详情
     async getTopic(topicId: string): Promise<ApiResponse<Topic>> {
         try {
-            // 尝试从视图获取带统计数据的话题
-            const { data: topicWithStats, error: viewError } = await supabase
-                .from('topics_with_stats')
-                .select('*')
-                .eq('id', topicId)
-                .single();
-
-            if (!viewError && topicWithStats) {
-                return {
-                    success: true,
-                    data: {
-                        id: topicWithStats.id,
-                        title: topicWithStats.title,
-                        description: topicWithStats.description,
-                        messages: topicWithStats.real_messages || topicWithStats.messages || 0,
-                        participants: topicWithStats.real_participants || topicWithStats.participants || 0,
-                        lastActivity: new Date(topicWithStats.last_activity),
-                        trending: topicWithStats.trending,
-                        createdBy: topicWithStats.created_by
-                    }
-                };
-            }
-
-            // 回退到普通查询
             const { data: topic, error } = await supabase
                 .from('topics')
                 .select('*')
@@ -357,19 +414,51 @@ class CommunityService {
                 };
             }
 
-            return {
-                success: true,
-                data: {
-                    id: topic.id,
-                    title: topic.title,
-                    description: topic.description,
-                    messages: topic.messages || 0,
-                    participants: topic.participants || 0,
-                    lastActivity: new Date(topic.last_activity),
-                    trending: topic.trending,
-                    createdBy: topic.created_by
-                }
-            };
+            // 计算真实的统计数据
+            try {
+                const { count: messageCount } = await supabase
+                    .from('topic_messages')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('topic_id', topicId);
+
+                const { data: participants } = await supabase
+                    .from('topic_messages')
+                    .select('username')
+                    .eq('topic_id', topicId);
+
+                const uniqueParticipants = new Set(participants?.map(p => p.username) || []);
+                const participantCount = uniqueParticipants.size;
+
+                return {
+                    success: true,
+                    data: {
+                        id: topic.id,
+                        title: topic.title,
+                        description: topic.description,
+                        messages: messageCount || 0,
+                        participants: participantCount,
+                        lastActivity: new Date(topic.last_activity),
+                        trending: topic.trending,
+                        createdBy: topic.created_by
+                    }
+                };
+            } catch (statsError) {
+                console.error('计算统计数据失败:', statsError);
+                // 如果统计计算失败，使用数据库中的值
+                return {
+                    success: true,
+                    data: {
+                        id: topic.id,
+                        title: topic.title,
+                        description: topic.description,
+                        messages: topic.messages || 0,
+                        participants: topic.participants || 0,
+                        lastActivity: new Date(topic.last_activity),
+                        trending: topic.trending,
+                        createdBy: topic.created_by
+                    }
+                };
+            }
         } catch (error) {
             console.error('获取话题详情失败:', error);
             return {

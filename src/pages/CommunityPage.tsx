@@ -4,6 +4,7 @@ import { MessageSquare, Users, Heart, Send, TrendingUp, Clock, Loader2, AlertCir
 import { communityService, Message, Topic } from '../services/communityService';
 import TopicDetail from '../components/TopicDetail';
 import CreateTopicForm from '../components/CreateTopicForm';
+import RealtimeIndicator from '../components/RealtimeIndicator';
 
 const CommunityPage: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([]);
@@ -18,6 +19,10 @@ const CommunityPage: React.FC = () => {
     const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
     const [showCreateTopic, setShowCreateTopic] = useState(false);
     const [isCreatingTopic, setIsCreatingTopic] = useState(false);
+    
+    // 实时更新状态
+    const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+    const [lastUpdate, setLastUpdate] = useState<Date | undefined>();
 
     // 加载留言数据
     const loadMessages = async () => {
@@ -122,10 +127,89 @@ const CommunityPage: React.FC = () => {
         }
     };
 
-    // 组件挂载时加载数据
+    // 组件挂载时加载数据和设置实时订阅
     useEffect(() => {
         loadMessages();
         loadTopics();
+
+        // 设置实时订阅
+        const messagesSubscription = communityService.subscribeToMessages((payload) => {
+            console.log('留言实时更新:', payload);
+            setLastUpdate(new Date());
+            
+            if (payload.eventType === 'INSERT') {
+                // 新留言插入
+                const newMessage = {
+                    id: payload.new.id,
+                    username: payload.new.username,
+                    content: payload.new.content,
+                    timestamp: new Date(payload.new.timestamp),
+                    likes: payload.new.likes,
+                    replies: payload.new.replies
+                };
+                setMessages(prev => [newMessage, ...prev]);
+            } else if (payload.eventType === 'UPDATE') {
+                // 留言更新（如点赞）
+                setMessages(prev => prev.map(msg => 
+                    msg.id === payload.new.id 
+                        ? {
+                            ...msg,
+                            likes: payload.new.likes,
+                            replies: payload.new.replies
+                        }
+                        : msg
+                ));
+            } else if (payload.eventType === 'DELETE') {
+                // 留言删除
+                setMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
+            }
+        });
+
+        const topicsSubscription = communityService.subscribeToTopics((payload) => {
+            console.log('话题实时更新:', payload);
+            setLastUpdate(new Date());
+            
+            if (payload.eventType === 'INSERT') {
+                // 新话题插入
+                const newTopic = {
+                    id: payload.new.id,
+                    title: payload.new.title,
+                    description: payload.new.description,
+                    messages: payload.new.messages || 0,
+                    participants: payload.new.participants || 0,
+                    lastActivity: new Date(payload.new.last_activity),
+                    trending: payload.new.trending,
+                    createdBy: payload.new.created_by
+                };
+                setTopics(prev => [newTopic, ...prev]);
+            } else if (payload.eventType === 'UPDATE') {
+                // 话题更新
+                setTopics(prev => prev.map(topic => 
+                    topic.id === payload.new.id 
+                        ? {
+                            ...topic,
+                            messages: payload.new.messages || 0,
+                            participants: payload.new.participants || 0,
+                            lastActivity: new Date(payload.new.last_activity),
+                            trending: payload.new.trending
+                        }
+                        : topic
+                ));
+            } else if (payload.eventType === 'DELETE') {
+                // 话题删除
+                setTopics(prev => prev.filter(topic => topic.id !== payload.old.id));
+            }
+        });
+
+        // 监听连接状态
+        setIsRealtimeConnected(true);
+
+        // 清理订阅
+        return () => {
+            setIsRealtimeConnected(false);
+            communityService.unsubscribe(messagesSubscription);
+            communityService.unsubscribe(topicsSubscription);
+        };
     }, []);
 
     const formatTime = (date: Date) => {
@@ -141,6 +225,11 @@ const CommunityPage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-slate-50">
+            {/* 实时状态指示器 */}
+            <RealtimeIndicator 
+                isConnected={isRealtimeConnected} 
+                lastUpdate={lastUpdate} 
+            />
             {/* Hero Section */}
             <div className="relative overflow-hidden">
                 <div className="absolute inset-0 bg-white/30 backdrop-blur-sm"></div>

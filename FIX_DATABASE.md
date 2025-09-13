@@ -1,11 +1,19 @@
 # 数据库修复指南
 
-## 🚨 问题描述
-错误：`column "created_by" does not exist`
+## 🚨 常见问题
 
-这是因为现有的数据库表结构缺少新增的字段和表。
+### 问题1：`column "created_by" does not exist`
+**原因**：`topics` 表缺少 `created_by` 字段
 
-## 🔧 解决方案
+### 问题2：`Could not find the table 'public.topics_with_stats'`
+**原因**：代码尝试访问不存在的数据库视图
+
+## ✅ 已自动修复
+- 代码已修改为不依赖数据库视图
+- 实时计算统计数据，兼容性更好
+- 添加了错误处理和回退机制
+
+## 🔧 需要执行的修复
 
 ### 方法一：执行迁移脚本（推荐）
 
@@ -15,15 +23,18 @@
 4. 创建新查询
 5. 复制并执行 `database/migration-add-topic-features.sql` 中的所有内容
 
-### 方法二：重新创建数据库
+### 方法二：最小修复（如果只缺少字段）
 
-如果你的数据库中没有重要数据，可以：
+如果只是缺少 `created_by` 字段，执行：
+```sql
+ALTER TABLE topics ADD COLUMN IF NOT EXISTS created_by VARCHAR(100) NOT NULL DEFAULT '系统管理员';
+```
 
-1. 在 Supabase Dashboard 中删除现有表：
-   - `messages`
-   - `topics` 
-   - `message_likes`
+### 方法三：重新创建数据库
 
+如果数据库中没有重要数据：
+
+1. 删除现有表：`messages`, `topics`, `message_likes`
 2. 执行完整的 `database/schema.sql`
 
 ## 📋 迁移脚本内容
@@ -53,7 +64,12 @@
 pnpm dev:full
 ```
 
-现在话题讨论功能应该可以正常工作了！
+## 📊 当前系统特性
+
+- ✅ **实时统计**：动态计算留言数和参与者数
+- ✅ **错误处理**：优雅处理数据库错误
+- ✅ **回退机制**：如果统计计算失败，使用数据库中的值
+- ✅ **兼容性**：即使数据库结构不完整也能工作
 
 ## 📞 如果还有问题
 
@@ -61,3 +77,6 @@ pnpm dev:full
 2. 确认所有表都已创建
 3. 验证 RLS 策略已启用
 4. 检查环境变量配置
+5. 查看浏览器控制台的错误信息
+
+现在系统应该可以正常工作了！🎉
