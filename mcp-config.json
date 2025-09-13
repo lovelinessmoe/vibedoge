@@ -1,0 +1,42 @@
+{
+  "mcpServers": {
+    "lottery-mcp": {
+      "command": "node",
+      "args": ["d:\\VibeCoding_pgm\\vibedoge\\vibedoge\\mcp-lottery-server.cjs"],
+      "cwd": "d:\\VibeCoding_pgm\\vibedoge\\vibedoge",
+      "env": {
+        "LOTTERY_API_URL": "http://localhost:3001/api/lottery",
+        "NODE_ENV": "development"
+      }
+    },
+    "memory-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ]
+    },
+    "fetch-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-fetch"
+      ]
+    },
+    "filesystem-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "d:\\VibeCoding_pgm\\vibedoge\\vibedoge"
+      ]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    }
+  }
+}
