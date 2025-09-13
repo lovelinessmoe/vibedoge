@@ -6,6 +6,7 @@ import LotteryDetailPage from './pages/LotteryDetailPage';
 import GlobalStatsPage from './pages/GlobalStatsPage';
 import AboutPage from './pages/AboutPage';
 import CommunityPage from './pages/CommunityPage';
+import './styles/custom.css';
 
 function App() {
   return (
