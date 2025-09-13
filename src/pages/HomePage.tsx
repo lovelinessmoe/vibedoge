@@ -209,18 +209,18 @@ const HomePage: React.FC = () => {
               <Zap className="h-20 w-20 text-blue-400" />
               <Sparkles className="h-16 w-16 text-pink-400 ml-4 animate-pulse" />
             </div>
-
-            <h1 className="text-6xl md:text-8xl font-bold bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 bg-clip-text text-transparent mb-12 leading-relaxed py-4">
-              VibeDoge
+            
+            <h1 className="text-6xl md:text-8xl font-bold bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 bg-clip-text text-transparent mb-6">
+              发现Vibe Coding时代的稀缺资源
             </h1>
-
-            <AnimatedText
-              text="🐕 Vibe Coding时代的新型资产交易平台"
+            
+            <AnimatedText 
+              text="🐕 人才认证 • 更好的Rules • MCP服务 • 有机AI项目"
               className="text-2xl md:text-4xl text-gray-600 mb-8 font-light"
             />
 
             <p className="text-xl md:text-2xl text-gray-600 max-w-4xl mx-auto leading-relaxed mb-12">
-              探索Vibe Coding时代诞生的创新数字资产，体验全新的智能交易生态与无限可能
+              在Vibe Coding时代，真正稀缺的不是代码，而是经过认证的人才、精心设计的规则、强大的MCP服务，以及未被AI污染的有机项目
             </p>
           </motion.div>
 
@@ -273,10 +273,10 @@ const HomePage: React.FC = () => {
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-6">
-              🐕 <span className="bg-gradient-to-r from-amber-600 to-yellow-500 bg-clip-text text-transparent">Vibe Coding</span> 时代的创新资产平台
+              🐕 <span className="bg-gradient-to-r from-amber-600 to-yellow-500 bg-clip-text text-transparent">Vibe Coding</span> 时代稀缺资源发现平台
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              探索 Vibe Coding 时代诞生的全新数字资产生态，体验超越传统的创新交易体验
+              在AI代码泛滥的时代，我们专注于发现和认证真正稀缺的价值资源
             </p>
           </motion.div>
 
@@ -284,18 +284,18 @@ const HomePage: React.FC = () => {
             {[
               {
                 icon: Shield,
-                title: "🐕‍🦺 Vibe 安全矩阵",
-                description: "融合传统安全与 Vibe 创新技术，构建多维度安全防护，守护您的数字资产"
+                title: "🐕‍🦺 人才认证体系",
+                description: "建立严格的开发者认证标准，识别和验证真正具备Vibe Coding能力的稀缺人才"
+              },
+              {
+                icon: Code,
+                title: "🐕 精品Rules库",
+                description: "收集和管理经过实战验证的高质量开发规则，为项目提供最佳实践指导"
               },
               {
                 icon: Zap,
-                title: "🐕 Vibe 智能引擎",
-                description: "基于 Vibe Coding 理念的智能算法，感知市场情绪波动，创造独特的交易体验"
-              },
-              {
-                icon: Users,
-                title: "🐾 Vibe 社区生态",
-                description: "汇聚 Vibe Coding 时代的创新者，共同探索数字资产的无限可能"
+                title: "🐾 强大MCP服务",
+                description: "提供功能丰富的MCP（Model Context Protocol）服务，连接AI与开发工具的桥梁"
               }
             ].map((feature, index) => (
               <motion.div
@@ -329,40 +329,42 @@ const HomePage: React.FC = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <AnimatedText
-              text="🐶 Vibe 时代核心理念"
+
+            <AnimatedText 
+              text="🐶 Vibe 时代四大稀缺资源"
+
               className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-amber-600 to-yellow-500 bg-clip-text text-transparent mb-6"
             />
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              传承 Vibe Coding 精神，以创新为驱动，构建属于新时代的数字资产生态
+              在AI代码泛滥的时代，这四种资源变得极其珍贵和稀缺
             </p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
               {
-                icon: Heart,
-                title: "🐕 Vibe 创新",
-                description: "秉承 Vibe Coding 的创新精神，突破传统金融框架，用全新的思维模式重新定义数字资产交易体验",
-                color: "from-red-500 to-pink-500"
-              },
-              {
                 icon: Users,
-                title: "🐶 情感共鸣",
-                description: "不仅仅是技术平台，更是情感连接的桥梁，让每一次交互都充满 Vibe 的温度和人文关怀",
+                title: "🐕 认证人才",
+                description: "经过严格认证的Vibe Coding开发者，具备真正的创新思维和实战能力，是项目成功的关键保障",
                 color: "from-blue-500 to-cyan-500"
               },
               {
+                icon: Code,
+                title: "🐶 精品Rules",
+                description: "经过实战验证的高质量开发规则和最佳实践，能够显著提升开发效率和代码质量",
+                color: "from-green-500 to-emerald-500"
+              },
+              {
                 icon: Zap,
-                title: "🦮 未来导向",
-                description: "面向 Vibe Coding 时代的未来，持续探索数字资产的无限可能，引领行业发展新方向",
+                title: "🦮 强大MCP服务",
+                description: "功能丰富的MCP服务提供AI与开发工具的无缝连接，是现代开发流程的核心基础设施",
                 color: "from-yellow-500 to-orange-500"
               },
               {
                 icon: Heart,
-                title: "🐾 生态共建",
-                description: "汇聚 Vibe 社区的集体智慧，与每一位成员共同构建属于新时代的数字资产生态系统",
-                color: "from-green-500 to-emerald-500"
+                title: "🐾 有机AI项目",
+                description: "未被AI代码提交污染的纯净项目，保持原创性和创新性，具有更高的商业价值和技术价值",
+                color: "from-red-500 to-pink-500"
               }
             ].map((value, index) => (
               <motion.div
@@ -408,11 +410,27 @@ const HomePage: React.FC = () => {
               <Sparkles className="h-12 w-12 text-yellow-200" />
             </div>
             <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-6 text-center">
-              🐕 <span className="bg-gradient-to-r from-amber-600 to-yellow-500 bg-clip-text text-transparent">VibeDoge</span> 创意抽奖体验
+              🐕 <span className="bg-gradient-to-r from-amber-600 to-yellow-500 bg-clip-text text-transparent">Vibe</span> 抽奖：激发服务调用积极性
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto text-center mb-12">
-              体验 Vibe Coding 时代的创新抽奖机制，每一次参与都是对 VibeDoge 生态的贡献！
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto text-center mb-8">
+              通过创新的抽奖机制，激励用户更积极地调用和使用Vibe服务。每一次服务调用都是获得稀缺资源的机会，让技术使用变成价值发现的旅程。
             </p>
+            <div className="backdrop-blur-md bg-amber-50/80 rounded-2xl p-6 border border-amber-200/50 max-w-4xl mx-auto mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                <div className="space-y-2">
+                  <div className="text-2xl font-bold text-amber-600">🎯 调用激励</div>
+                  <p className="text-sm text-gray-600">每次调用Vibe服务都能获得抽奖机会，让技术使用变成价值积累</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-2xl font-bold text-amber-600">🏆 稀缺奖励</div>
+                  <p className="text-sm text-gray-600">奖池包含认证人才推荐、精品Rules、MCP服务权限等稀缺资源</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-2xl font-bold text-amber-600">🔄 生态循环</div>
+                  <p className="text-sm text-gray-600">抽奖收益反哺平台发展，形成可持续的价值创造循环</p>
+                </div>
+              </div>
+            </div>
           </motion.div>
 
           <div className="text-center">
@@ -465,11 +483,27 @@ const HomePage: React.FC = () => {
               <Users className="h-12 w-12 text-purple-600" />
             </div>
             <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
-              🐕 <span className="bg-gradient-to-r from-amber-600 to-yellow-500 bg-clip-text text-transparent">Vibe</span> 社区广场
+              🐕 <span className="bg-gradient-to-r from-amber-600 to-yellow-500 bg-clip-text text-transparent">Vibe</span> 留言板：增强价值认同
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              与全球 Vibe 创作者实时交流，分享 VibeDoge 创意灵感和 Coding 心得
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+              通过社区交互增强用户对Vibe Coding时代价值观的认同，促进稀缺资源的发现和分享。每一条留言都是价值观的传播，每一次互动都是认同的加深。
             </p>
+            <div className="backdrop-blur-md bg-blue-50/80 rounded-2xl p-6 border border-blue-200/50 max-w-4xl mx-auto mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                <div className="space-y-2">
+                  <div className="text-2xl font-bold text-blue-600">💬 价值传播</div>
+                  <p className="text-sm text-gray-600">分享Vibe Coding理念，传播稀缺资源价值观，建立共同认知</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-2xl font-bold text-blue-600">🤝 社区认同</div>
+                  <p className="text-sm text-gray-600">通过互动交流增强归属感，形成对平台价值观的深度认同</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-2xl font-bold text-blue-600">🔍 资源发现</div>
+                  <p className="text-sm text-gray-600">在交流中发现新的稀缺资源，推荐优质人才和项目</p>
+                </div>
+              </div>
+            </div>
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

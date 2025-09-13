@@ -1,0 +1,42 @@
+{
+  "mcpServers": {
+    "lottery-mcp": {
+      "command": "node",
+      "args": ["d:\\VibeCoding_pgm\\vibedoge\\vibedoge\\mcp-lottery-server.cjs"],
+      "cwd": "d:\\VibeCoding_pgm\\vibedoge\\vibedoge",
+      "env": {
+        "LOTTERY_API_URL": "https://traevibedoge2vroc-13141305408-3707-chenxings-projects-b7dbfe13.vercel.app/api/lottery",
+        "NODE_ENV": "production"
+      }
+    },
+    "memory-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ]
+    },
+    "fetch-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-fetch"
+      ]
+    },
+    "filesystem-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "d:\\VibeCoding_pgm\\vibedoge\\vibedoge"
+      ]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    }
+  }
+}
