@@ -18,8 +18,7 @@ import {
   Zap
 } from 'lucide-react';
 import { useLotteryStore } from '../store';
-import { mockLotteryActivities, getRandomLotteryResult } from '../utils/mockData';
-import { LotteryPrize } from '../types';
+import { lotteryService, LotteryPrize, LotteryActivity } from '../services/lotteryService';
 import UserProfileForm from '../components/UserProfileForm';
 import { Link } from 'react-router-dom';
 
@@ -68,8 +67,8 @@ const LotteryDetailPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'participate' | 'api-demo'>('participate');
 
   useEffect(() => {
-    setActivities(mockLotteryActivities);
-    setCurrentActivity(mockLotteryActivities[0]);
+    // 加载抽奖活动
+    loadLotteryActivities();
     
     // 检查用户是否已经提交过资料
     const savedProfile = localStorage.getItem('userProfile');
@@ -85,6 +84,19 @@ const LotteryDetailPage: React.FC = () => {
     }
   }, [setActivities, setCurrentActivity]);
 
+  // 加载抽奖活动
+  const loadLotteryActivities = async () => {
+    try {
+      const response = await lotteryService.getLotteryActivities();
+      if (response.success && response.data) {
+        setActivities(response.data);
+        setCurrentActivity(response.data[0]);
+      }
+    } catch (error) {
+      console.error('加载抽奖活动失败:', error);
+    }
+  };
+
   // 显示消息
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
@@ -95,16 +107,9 @@ const LotteryDetailPage: React.FC = () => {
   const generateUserId = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/lottery/generate-user-id', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const result: ApiResponse<{ userId: string; createdAt: string }> = await response.json();
+      const result = await lotteryService.generateUserId();
       
-      if (result.success) {
+      if (result.success && result.data) {
         setUserId(result.data.userId);
         localStorage.setItem('demo_user_id', result.data.userId);
         showMessage('success', '用户ID生成成功！');
@@ -128,15 +133,7 @@ const LotteryDetailPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('/api/lottery/generate-lottery-id', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId }),
-      });
-
-      const result: ApiResponse<{ lotteryId: string; userId: string; createdAt: string }> = await response.json();
+      const result = await lotteryService.generateLotteryId(userId);
       
       if (result.success) {
         showMessage('success', '抽奖ID生成成功！');
@@ -155,10 +152,9 @@ const LotteryDetailPage: React.FC = () => {
   // 加载用户抽奖记录
   const loadUserLotteries = async (userIdToLoad: string) => {
     try {
-      const response = await fetch(`/api/lottery/user-lotteries/${userIdToLoad}`);
-      const result: ApiResponse<{ userId: string; lotteries: LotteryRecord[]; total: number }> = await response.json();
+      const result = await lotteryService.getUserLotteries(userIdToLoad);
       
-      if (result.success) {
+      if (result.success && result.data) {
         setLotteryRecords(result.data.lotteries);
       }
     } catch (error) {
@@ -232,7 +228,7 @@ const LotteryDetailPage: React.FC = () => {
     
     // 模拟抽奖过程
     setTimeout(() => {
-      const result = getRandomLotteryResult(currentActivity.prizes);
+      const result = lotteryService.getRandomLotteryResult(currentActivity.prizes);
       setDrawResult(result);
       setUserTickets(prev => Math.max(0, prev - 1));
       setIsDrawing(false);

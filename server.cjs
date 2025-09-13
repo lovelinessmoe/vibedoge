@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const lotteryRoutes = require('./api/routes/lottery.cjs');
+const communityRoutes = require('./api/routes/community.cjs');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -24,6 +25,7 @@ app.use((req, res, next) => {
 
 // API 路由
 app.use('/api/lottery', lotteryRoutes);
+app.use('/api/community', communityRoutes);
 
 // 健康检查
 app.get('/api/health', (req, res) => {

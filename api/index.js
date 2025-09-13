@@ -1,5 +1,6 @@
 const express = require('express');
 const lotteryRoutes = require('./routes/lottery.cjs');
+const communityRoutes = require('./routes/community.cjs');
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use((req, res, next) => {
 
 // API 路由
 app.use('/api/lottery', lotteryRoutes);
+app.use('/api/community', communityRoutes);
 
 // 健康检查
 app.get('/api/health', (req, res) => {

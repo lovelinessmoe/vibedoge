@@ -1,101 +1,93 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquare, Users, Heart, Send, TrendingUp, Clock } from 'lucide-react';
-
-interface Message {
-    id: string;
-    username: string;
-    content: string;
-    timestamp: Date;
-    likes: number;
-    replies: number;
-}
-
-interface Topic {
-    id: string;
-    title: string;
-    description: string;
-    messages: number;
-    participants: number;
-    lastActivity: Date;
-    trending: boolean;
-}
+import { MessageSquare, Users, Heart, Send, TrendingUp, Clock, Loader2, AlertCircle } from 'lucide-react';
+import { communityService, Message, Topic } from '../services/communityService';
 
 const CommunityPage: React.FC = () => {
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: '1',
-            username: 'VibeTrader',
-            content: '今天的抽奖活动太精彩了！恭喜所有中奖的朋友们 🎉',
-            timestamp: new Date(Date.now() - 1000 * 60 * 5),
-            likes: 12,
-            replies: 3
-        },
-        {
-            id: '2',
-            username: 'CryptoExplorer',
-            content: 'Vibe交易所的用户体验真的很棒，界面设计很现代化！',
-            timestamp: new Date(Date.now() - 1000 * 60 * 15),
-            likes: 8,
-            replies: 1
-        },
-        {
-            id: '3',
-            username: 'BlockchainFan',
-            content: '期待更多有趣的功能上线，社区氛围越来越好了 💪',
-            timestamp: new Date(Date.now() - 1000 * 60 * 30),
-            likes: 15,
-            replies: 5
-        }
-    ]);
-
-    const [topics] = useState<Topic[]>([
-        {
-            id: '1',
-            title: '抽奖活动讨论',
-            description: '分享你的抽奖体验和建议',
-            messages: 156,
-            participants: 42,
-            lastActivity: new Date(Date.now() - 1000 * 60 * 2),
-            trending: true
-        },
-        {
-            id: '2',
-            title: '交易策略分享',
-            description: '交流交易心得和市场分析',
-            messages: 89,
-            participants: 28,
-            lastActivity: new Date(Date.now() - 1000 * 60 * 10),
-            trending: true
-        },
-        {
-            id: '3',
-            title: '新手指南',
-            description: '帮助新用户快速上手',
-            messages: 234,
-            participants: 67,
-            lastActivity: new Date(Date.now() - 1000 * 60 * 45),
-            trending: false
-        }
-    ]);
-
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [topics, setTopics] = useState<Topic[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [activeTab, setActiveTab] = useState<'messages' | 'topics'>('messages');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [currentUser] = useState('游客用户'); // 实际项目中应该从用户认证系统获取
 
-    const handleSendMessage = () => {
-        if (newMessage.trim()) {
-            const message: Message = {
-                id: Date.now().toString(),
-                username: 'You',
-                content: newMessage,
-                timestamp: new Date(),
-                likes: 0,
-                replies: 0
-            };
-            setMessages([message, ...messages]);
-            setNewMessage('');
+    // 加载留言数据
+    const loadMessages = async () => {
+        console.log('开始加载留言数据...');
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await communityService.getMessages(1, 20);
+            console.log('API响应:', response);
+            if (response.success && response.data) {
+                console.log('设置留言数据:', response.data.messages);
+                setMessages(response.data.messages);
+            } else {
+                console.error('API错误:', response.error);
+                setError(response.error || '加载留言失败');
+            }
+        } catch (err) {
+            console.error('网络错误:', err);
+            setError('网络连接失败');
+        } finally {
+            setLoading(false);
         }
     };
+
+    // 加载话题数据
+    const loadTopics = async () => {
+        try {
+            const response = await communityService.getTopics();
+            if (response.success && response.data) {
+                setTopics(response.data);
+            }
+        } catch (err) {
+            console.error('加载话题失败:', err);
+        }
+    };
+
+    // 发送留言
+    const handleSendMessage = async () => {
+        if (!newMessage.trim()) return;
+
+        setLoading(true);
+        try {
+            const response = await communityService.postMessage(currentUser, newMessage.trim());
+            if (response.success && response.data) {
+                setMessages([response.data, ...messages]);
+                setNewMessage('');
+            } else {
+                setError(response.error || '发送留言失败');
+            }
+        } catch (err) {
+            setError('发送失败，请检查网络连接');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 点赞留言
+    const handleLikeMessage = async (messageId: string) => {
+        try {
+            const response = await communityService.likeMessage(messageId, currentUser);
+            if (response.success && response.data) {
+                setMessages(messages.map(msg => 
+                    msg.id === messageId 
+                        ? { ...msg, likes: response.data!.likes }
+                        : msg
+                ));
+            }
+        } catch (err) {
+            console.error('点赞失败:', err);
+        }
+    };
+
+    // 组件挂载时加载数据
+    useEffect(() => {
+        loadMessages();
+        loadTopics();
+    }, []);
 
     const formatTime = (date: Date) => {
         const now = new Date();
@@ -171,6 +163,20 @@ const CommunityPage: React.FC = () => {
                         transition={{ duration: 0.5 }}
                         className="space-y-6"
                     >
+                        {/* Error Message */}
+                        {error && (
+                            <div className="bg-red-50/90 backdrop-blur-md border border-red-200 rounded-2xl p-4 flex items-center gap-3">
+                                <AlertCircle className="w-5 h-5 text-red-500" />
+                                <span className="text-red-700">{error}</span>
+                                <button
+                                    onClick={() => setError(null)}
+                                    className="ml-auto text-red-500 hover:text-red-700"
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        )}
+
                         {/* Message Input */}
                         <div className="bg-white/75 backdrop-blur-md rounded-2xl p-6 border border-white/90">
                             <div className="flex gap-4">
@@ -181,13 +187,23 @@ const CommunityPage: React.FC = () => {
                                         placeholder="分享你的想法..."
                                         className="w-full bg-white/85 border border-gray-700/80 rounded-xl px-4 py-3 text-slate-800 placeholder-gray-600 resize-none focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:bg-white/90 backdrop-blur-sm"
                                         rows={3}
+                                        disabled={loading}
+                                        maxLength={500}
                                     />
+                                    <div className="text-right text-sm text-slate-500 mt-1">
+                                        {newMessage.length}/500
+                                    </div>
                                 </div>
                                 <button
                                     onClick={handleSendMessage}
-                                    className="bg-blue-600/90 backdrop-blur-sm border border-blue-700/90 hover:bg-blue-700/95 text-white px-6 py-3 rounded-xl transition-all duration-300 flex items-center gap-2 h-fit shadow-lg"
+                                    disabled={loading || !newMessage.trim()}
+                                    className="bg-blue-600/90 backdrop-blur-sm border border-blue-700/90 hover:bg-blue-700/95 disabled:bg-gray-400/90 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl transition-all duration-300 flex items-center gap-2 h-fit shadow-lg"
                                 >
-                                    <Send className="w-5 h-5" />
+                                    {loading ? (
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                        <Send className="w-5 h-5" />
+                                    )}
                                     发送
                                 </button>
                             </div>
@@ -195,40 +211,53 @@ const CommunityPage: React.FC = () => {
 
                         {/* Messages List */}
                         <div className="space-y-4">
-                            {messages.map((message) => (
-                                <motion.div
-                                    key={message.id}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    className="bg-white/75 backdrop-blur-md rounded-2xl p-6 hover:bg-white/85 transition-all duration-300 border border-white/90"
-                                >
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-12 h-12 bg-blue-500/20 backdrop-blur-sm border border-blue-200/30 rounded-full flex items-center justify-center text-slate-800 font-bold">
-                                            {message.username[0]}
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <h3 className="text-slate-800 font-semibold">{message.username}</h3>
-                                                <span className="text-slate-500 text-sm flex items-center gap-1">
-                                                    <Clock className="w-4 h-4" />
-                                                    {formatTime(message.timestamp)}
-                                                </span>
+                            {loading && messages.length === 0 ? (
+                                <div className="flex justify-center py-12">
+                                    <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                                </div>
+                            ) : messages.length === 0 ? (
+                                <div className="text-center py-12 text-slate-500">
+                                    暂无留言，快来发表第一条留言吧！
+                                </div>
+                            ) : (
+                                messages.map((message) => (
+                                    <motion.div
+                                        key={message.id}
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        className="bg-white/75 backdrop-blur-md rounded-2xl p-6 hover:bg-white/85 transition-all duration-300 border border-white/90"
+                                    >
+                                        <div className="flex items-start gap-4">
+                                            <div className="w-12 h-12 bg-blue-500/20 backdrop-blur-sm border border-blue-200/30 rounded-full flex items-center justify-center text-slate-800 font-bold">
+                                                {message.username[0]}
                                             </div>
-                                            <p className="text-slate-600 mb-3">{message.content}</p>
-                                            <div className="flex items-center gap-4">
-                                                <button className="flex items-center gap-1 text-slate-500 hover:text-pink-500 transition-colors">
-                                                    <Heart className="w-4 h-4" />
-                                                    {message.likes}
-                                                </button>
-                                                <button className="flex items-center gap-1 text-slate-500 hover:text-blue-500 transition-colors">
-                                                    <MessageSquare className="w-4 h-4" />
-                                                    {message.replies}
-                                                </button>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <h3 className="text-slate-800 font-semibold">{message.username}</h3>
+                                                    <span className="text-slate-500 text-sm flex items-center gap-1">
+                                                        <Clock className="w-4 h-4" />
+                                                        {formatTime(message.timestamp)}
+                                                    </span>
+                                                </div>
+                                                <p className="text-slate-600 mb-3">{message.content}</p>
+                                                <div className="flex items-center gap-4">
+                                                    <button 
+                                                        onClick={() => handleLikeMessage(message.id)}
+                                                        className="flex items-center gap-1 text-slate-500 hover:text-pink-500 transition-colors"
+                                                    >
+                                                        <Heart className="w-4 h-4" />
+                                                        {message.likes}
+                                                    </button>
+                                                    <button className="flex items-center gap-1 text-slate-500 hover:text-blue-500 transition-colors">
+                                                        <MessageSquare className="w-4 h-4" />
+                                                        {message.replies}
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </motion.div>
-                            ))}
+                                    </motion.div>
+                                ))
+                            )}
                         </div>
                     </motion.div>
                 )}
