@@ -148,7 +148,7 @@ interface MessageBoardState {
   clearNewMessageCount: () => void;
 }
 
-export const useMessageBoardStore = create<MessageBoardState>((set, get) => ({
+export const useMessageBoardStore = create<MessageBoardState>((set) => ({
   messages: [],
   isLoading: false,
   newMessageCount: 0,

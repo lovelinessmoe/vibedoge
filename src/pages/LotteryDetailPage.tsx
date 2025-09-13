@@ -18,7 +18,7 @@ import {
   Zap
 } from 'lucide-react';
 import { useLotteryStore } from '../store';
-import { lotteryService, LotteryPrize, LotteryActivity } from '../services/lotteryService';
+import { lotteryService, LotteryPrize } from '../services/lotteryService';
 import UserProfileForm from '../components/UserProfileForm';
 import { Link } from 'react-router-dom';
 
@@ -38,12 +38,7 @@ interface LotteryRecord {
   status: string;
 }
 
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  message: string;
-  error?: string;
-}
+
 
 const LotteryDetailPage: React.FC = () => {
   const { currentActivity, isDrawing, setActivities, setCurrentActivity, setIsDrawing } = useLotteryStore();
