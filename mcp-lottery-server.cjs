@@ -30,6 +30,7 @@ class LotteryMCPServer {
     );
 
     this.apiBaseUrl = process.env.LOTTERY_API_URL || 'http://localhost:3001/api';
+    this.fetch = fetch; // 绑定fetch到实例
     this.setupToolHandlers();
   }
 
@@ -189,7 +190,7 @@ class LotteryMCPServer {
   // 注册用户到数据库
   async registerUser(mcpUserId) {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/lottery/generate-user-id`, {
+      const response = await this.fetch(`${this.apiBaseUrl}/lottery/generate-user-id`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -220,7 +221,7 @@ class LotteryMCPServer {
   // 生成抽奖ID
   async generateLotteryId(userId) {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/lottery/generate-lottery-id`, {
+      const response = await this.fetch(`${this.apiBaseUrl}/lottery/generate-lottery-id`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -251,7 +252,7 @@ class LotteryMCPServer {
   // 执行抽奖
   async drawLottery(lotteryId, userId) {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/lottery/draw`, {
+      const response = await this.fetch(`${this.apiBaseUrl}/lottery/draw`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -283,7 +284,7 @@ class LotteryMCPServer {
   // 获取用户抽奖记录
   async getUserLotteries(userId) {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/lottery/user/${userId}`);
+      const response = await this.fetch(`${this.apiBaseUrl}/lottery/user/${userId}`);
       const result = await response.json();
       
       if (result.success) {
@@ -323,7 +324,7 @@ class LotteryMCPServer {
   // 获取全局统计
   async getGlobalStats() {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/lottery/stats`);
+      const response = await this.fetch(`${this.apiBaseUrl}/lottery/stats`);
       const result = await response.json();
       
       if (result.success) {
