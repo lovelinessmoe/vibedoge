@@ -15,9 +15,6 @@ import {
   Play
 } from 'lucide-react';
 import { useLotteryStore, useUserStore } from '../store';
-import { useLotteryStore } from '../store';
-import { lotteryService, LotteryPrize } from '../services/lotteryService';
-import UserProfileForm from '../components/UserProfileForm';
 import { Link } from 'react-router-dom';
 import Carousel from '../components/ui/Carousel';
 
@@ -177,14 +174,6 @@ const PRIZE_CATEGORIES = {
   }
 };
 
-interface LotteryRecord {
-  lotteryId: string;
-  userId: string;
-  createdAt: string;
-  status: string;
-}
-
-
 // 奖品轮播组件
 const PrizeCarousel: React.FC<{ category: keyof typeof PRIZE_CATEGORIES }> = ({ category }) => {
   const categoryData = PRIZE_CATEGORIES[category];
@@ -261,18 +250,11 @@ const LotteryDetailPage: React.FC = () => {
   const isMcpUser = !!mcpUser;
 
   useEffect(() => {
-    // 加载抽奖活动
-    loadLotteryActivities();
-    
-    // 检查用户是否已经提交过资料
-    const savedProfile = localStorage.getItem('userProfile');
-    if (savedProfile) {
-      setUserProfile(JSON.parse(savedProfile));
     // 初始化MCP用户
     if (!isMcpUser) {
       initializeMCPUser();
     }
-  }, []);
+  }, [isMcpUser, initializeMCPUser]);
 
   useEffect(() => {
     if (isMcpUser) {
@@ -288,29 +270,9 @@ const LotteryDetailPage: React.FC = () => {
         getUserLotteries(mcpUser.id),
         getGlobalStats()
       ]);
-
-      // 获取最新的抽奖记录
-      await fetch(`/api/lottery/user-lotteries/${mcpUser.id}`).then(res => res.json());
     } catch (error) {
       console.error('加载用户数据失败:', error);
     }
-  // 加载抽奖活动
-  const loadLotteryActivities = async () => {
-    try {
-      const response = await lotteryService.getLotteryActivities();
-      if (response.success && response.data) {
-        setActivities(response.data);
-        setCurrentActivity(response.data[0]);
-      }
-    } catch (error) {
-      console.error('加载抽奖活动失败:', error);
-    }
-  };
-
-  // 显示消息
-  const showMessage = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage(null), 3000);
   };
 
   const handleRegisterMCPUser = async () => {
@@ -319,15 +281,6 @@ const LotteryDetailPage: React.FC = () => {
       const result = await registerUser();
       if (result.success) {
         await loadUserData();
-      const result = await lotteryService.generateUserId();
-
-      if (result.success && result.data) {
-        setUserId(result.data.userId);
-        localStorage.setItem('demo_user_id', result.data.userId);
-        showMessage('success', '用户ID生成成功！');
-        setLotteryRecords([]); // 清空之前的记录
-      } else {
-        alert(result.error || '注册失败');
       }
     } catch (error) {
       console.error('注册失败:', error);
@@ -336,7 +289,6 @@ const LotteryDetailPage: React.FC = () => {
       setLoading(false);
     }
   };
-
 
   const handleDrawLottery = async () => {
     if (!mcpUser?.isRegistered) {
@@ -381,111 +333,15 @@ const LotteryDetailPage: React.FC = () => {
           setShowResult(false);
           setDrawResult(null);
         }, 5000);
-      const result = await lotteryService.generateLotteryId(userId);
-
-      if (result.success) {
-        showMessage('success', '抽奖ID生成成功！');
-        // 重新加载用户抽奖记录
-        await loadUserLotteries(userId);
-      } else {
-        alert(result.error || '抽奖失败');
       }
     } catch (error) {
       console.error('抽奖失败:', error);
       alert('抽奖失败，请稍后重试');
     } finally {
       setLoading(false);
-    }
-  };
-
-  // 加载用户抽奖记录
-  const loadUserLotteries = async (userIdToLoad: string) => {
-    try {
-      const result = await lotteryService.getUserLotteries(userIdToLoad);
-
-      if (result.success && result.data) {
-        setLotteryRecords(result.data.lotteries);
-      }
-    } catch (error) {
-      console.error('加载抽奖记录失败:', error);
-    }
-  };
-
-  // 刷新记录
-  const refreshRecords = () => {
-    if (userId) {
-      loadUserLotteries(userId);
-      showMessage('success', '记录已刷新');
-    }
-  };
-
-  // 格式化时间
-  const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString('zh-CN');
-  };
-
-  const handleBuyTickets = () => {
-    if (!userProfile) {
-      setShowProfileForm(true);
-      return;
-    }
-    
-    if (currentActivity) {
-      setUserTickets(prev => prev + selectedTickets);
-      alert(`成功购买 ${selectedTickets} 张抽奖券！`);
-    }
-  };
-  
-  const handleProfileSubmit = async (profileData: any) => {
-    setIsSubmittingProfile(true);
-    
-    try {
-      // 模拟API调用
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // 保存用户资料
-      localStorage.setItem('userProfile', JSON.stringify(profileData));
-      setUserProfile(profileData);
-      setShowProfileForm(false);
-      
-      // 自动购买抽奖券
-      if (currentActivity) {
-        setUserTickets(prev => prev + selectedTickets);
-        alert(`成功购买 ${selectedTickets} 张抽奖券！`);
-      }
-    } catch (error) {
-      console.error('提交用户资料失败:', error);
-    } finally {
-      setIsSubmittingProfile(false);
-    }
-  };
-  
-  const handleProfileCancel = () => {
-    setShowProfileForm(false);
-  };
-
-  const handleDraw = async () => {
-    if (!userProfile) {
-      setShowProfileForm(true);
-      return;
       setIsGeneratingLottery(false);
     }
-    
-    if (!currentActivity || userTickets === 0) return;
-    
-    setIsDrawing(true);
-    setShowResult(false);
-    
-    // 模拟抽奖过程
-    setTimeout(() => {
-      const result = lotteryService.getRandomLotteryResult(currentActivity.prizes);
-      setDrawResult(result);
-      setUserTickets(prev => Math.max(0, prev - 1));
-      setIsDrawing(false);
-      setShowResult(true);
-    }, 3000);
   };
-
 
   const completedLotteries = userLotteries.filter(lottery => lottery.status === 'completed');
 
@@ -750,7 +606,7 @@ const LotteryDetailPage: React.FC = () => {
                   <div className="text-center py-8 text-gray-500">
                     <Gift className="h-8 w-8 mx-auto mb-2 text-gray-400" />
                     <p>暂无抽奖记录</p>
-                    <p className="text-sm">生成抽奖ID后记录会显示在这里</p>
+                    <p className="text-sm">抽奖后记录会显示在这里</p>
                   </div>
                 ) : (
                   userLotteries.map((record, index) => (

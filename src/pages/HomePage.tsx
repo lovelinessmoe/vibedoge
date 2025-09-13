@@ -172,9 +172,9 @@ const HomePage: React.FC = () => {
   };
 
   // 计算统计数据
-  const totalMessages = messages.reduce((sum, msg) => sum + 1, 0);
-  const totalLikes = messages.reduce((sum, msg) => sum + msg.likes, 0);
-  const uniqueUsers = new Set(messages.map(msg => msg.username)).size;
+  const totalMessages = messages.length;
+  const totalLikes = messages.reduce((sum, message) => sum + message.likes, 0);
+  const uniqueUsers = new Set(messages.map(message => message.username)).size;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
