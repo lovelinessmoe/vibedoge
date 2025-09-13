@@ -235,7 +235,7 @@ const HomePage: React.FC = () => {
                 size="lg"
                 className="backdrop-blur-md bg-gradient-to-r from-amber-500/90 to-yellow-600/90 border-2 border-amber-600/90 text-white hover:from-amber-600/95 hover:to-yellow-700/95 hover:border-amber-700/95 shadow-xl hover:shadow-2xl hover:shadow-amber-500/25 transition-all duration-300 group"
               >
-                🐾 开始体验
+                🚀 Vibe体验
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
