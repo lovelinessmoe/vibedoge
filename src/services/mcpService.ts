@@ -29,7 +29,7 @@ class MCPService {
       createdAt: now,
       lastActiveAt: now,
       sessionToken: this.generateSessionToken(),
-      remainingDraws: 0, // 初始为0，需要注册后获得抽奖次数
+      remainingDraws: 999999, // 无限抽奖模式
       isRegistered: false
     };
 
@@ -91,7 +91,7 @@ class MCPService {
   }
 
   // 用户注册成功，发放抽奖次数
-  registerSuccess(draws: number = 3): void {
+  registerSuccess(draws: number = 999999): void {
     if (this.currentUser) {
       this.currentUser.remainingDraws = draws;
       this.currentUser.isRegistered = true;
@@ -99,10 +99,11 @@ class MCPService {
     }
   }
 
-  // 使用一次抽奖机会
+  // 使用一次抽奖机会（无限模式）
   useDraw(): boolean {
-    if (this.currentUser && this.currentUser.remainingDraws > 0) {
-      this.currentUser.remainingDraws--;
+    if (this.currentUser) {
+      // 无限抽奖模式，不减次数，始终返回true
+      // this.currentUser.remainingDraws--; // 注释掉减次数逻辑
       this.saveToStorage(this.currentUser);
       return true;
     }
@@ -112,6 +113,15 @@ class MCPService {
   // 获取剩余抽奖次数
   getRemainingDraws(): number {
     return this.currentUser?.remainingDraws || 0;
+  }
+
+  // 设置剩余抽奖次数（从后端同步）
+  setRemainingDraws(count: number): void {
+    if (this.currentUser) {
+      // 无限抽奖模式，始终设置为大量次数
+      this.currentUser.remainingDraws = 999999;
+      this.saveToStorage(this.currentUser);
+    }
   }
 
   // 检查是否已注册
